@@ -2,40 +2,68 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mobiles Pi Store - جارٍ التحقق</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        body { background-color: #6700eb; color: white; text-align: center; font-family: Arial; padding-top: 100px; }
-        .loader { border: 5px solid #f3f3f3; border-top: 5px solid #ffcc00; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; margin: 20px auto; }
+        body { 
+            background-color: #6700eb; 
+            color: white; 
+            text-align: center; 
+            font-family: Arial, sans-serif; 
+            padding-top: 100px;
+            margin: 0;
+        }
+        .loader { 
+            border: 5px solid #f3f3f3; 
+            border-top: 5px solid #ffcc00; 
+            border-radius: 50%; 
+            width: 50px; 
+            height: 50px; 
+            animation: spin 2s linear infinite; 
+            margin: 20px auto; 
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .status-text { font-size: 1.2rem; margin-top: 20px; }
     </style>
 </head>
 <body>
+
     <h1>مرحباً بك في سوق الهواتف الآمن</h1>
     <div class="loader"></div>
-    <p id="status">جاري تأمين اتصالك بشبكة باي...</p>
+    <p id="status" class="status-text">جاري تأمين اتصالك بشبكة باي...</p>
 
     <script>
-        // 1. تشغيل الأداة
+        // 1. تهيئة المكتبة (تأكد من استخدام sandbox: true للتجربة)
         Pi.init({ version: "2.0", sandbox: true });
 
-        async function startApp() {
+        async function authenticateAndRedirect() {
+            const statusElement = document.getElementById('status');
+            
             try {
-                // 2. طلب المصادقة
+                // 2. طلب المصادقة من المستخدم (يجب فتحه من Pi Browser)
                 const auth = await Pi.authenticate(['username', 'payments'], onIncompletePaymentFound);
                 
-                // 3. إذا نجح الربط، نرسله فوراً إلى Carrd
-                document.getElementById('status').innerText = "تم التحقق! جاري نقلك للمتجر...";
-                window.location.href = "https://mobiles-pi-store.carrd.co/";
-                
+                // 3. عند نجاح الربط، يتم التحويل فوراً إلى متجر Carrd
+                statusElement.innerText = "تم التحقق بنجاح! جاري نقلك للمتجر...";
+                setTimeout(() => {
+                    window.location.href = "https://mobiles-pi-store.carrd.co/";
+                }, 1500);
+
             } catch (err) {
-                document.getElementById('status').innerText = "يرجى فتح الموقع من داخل Pi Browser للمتابعة.";
+                // في حال فشل الربط أو فتح الموقع من متصفح عادي
+                statusElement.innerText = "يرجى فتح الموقع من داخل تطبيق Pi Browser للمتابعة.";
+                console.error(err);
             }
         }
 
-        function onIncompletePaymentFound(payment) { /* للتعامل مع المدفوعات لاحقاً */ }
+        // دالة ضرورية للتعامل مع أي عمليات دفع معلقة
+        function onIncompletePaymentFound(payment) {
+            console.log("Incomplete payment found", payment);
+        };
 
-        window.onload = startApp;
+        // تشغيل الدالة فور تحميل الصفحة
+        window.onload = authenticateAndRedirect;
     </script>
 </body>
 </html>
