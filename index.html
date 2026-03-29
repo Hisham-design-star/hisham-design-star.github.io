@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobiles Pi Store - تأمين الاتصال</title>
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <title>Mobiles Pi Store - تأمين واختبار الدفع</title>
+    <script src="https://sdk.mine.pi/pi-sdk.js"></script>
     <style>
         body { 
             background-color: #6700eb; 
             color: white; 
             text-align: center; 
             font-family: Arial, sans-serif; 
-            padding-top: 100px;
+            padding: 50px 20px;
             margin: 0;
         }
         .loader { 
@@ -25,34 +25,60 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .status-text { font-size: 1.2rem; margin-top: 20px; }
+        .payment-box {
+            display: none; /* مخفي حتى تكتمل المصادقة */
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 30px;
+            border: 1px solid #ffcc00;
+        }
+        button {
+            background-color: #ffcc00;
+            color: #6700eb;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
 
     <h1>مرحباً بك في سوق الهواتف الآمن</h1>
-    <div class="loader"></div>
-    <p id="status" class="status-text">جاري تأمين اتصالك بشبكة باي...</p>
+    <div id="loading-section">
+        <div class="loader"></div>
+        <p id="status" class="status-text">جاري تأمين اتصالك بشبكة باي...</p>
+    </div>
+
+    <div id="payment-section" class="payment-box">
+        <h3>اختبار الدفع التجريبي (Testnet)</h3>
+        <p>لإتمام إعداد تطبيقك، يرجى إجراء معاملة تجريبية بقيمة 1 Pi</p>
+        <button id="pay-button">إجراء معاملة تجريبية الآن</button>
+    </div>
 
     <script>
-        // تهيئة المكتبة
-        Pi.init({ version: "2.0", sandbox: false });
+        // ملاحظة: تم ضبط sandbox على true لأغراض الاختبار (Testnet)
+        Pi.init({ version: "2.0", sandbox: true });
 
-        async function authenticateAndRedirect() {
+        async function authenticateUser() {
             const statusElement = document.getElementById('status');
+            const paymentSection = document.getElementById('payment-section');
+            const loadingSection = document.getElementById('loading-section');
             
             try {
-                // طلب المصادقة مع الصلاحيات المطلوبة
+                // 1. المصادقة
                 const auth = await Pi.authenticate(['username', 'payments', 'wallet_address'], onIncompletePaymentFound);
-                
-                // حفظ بيانات المستخدم مؤقتاً لضمان سلاسة الدفع لاحقاً
                 console.log("Authenticated User: ", auth.user.username);
                 
-                statusElement.innerText = "تم التحقق بنجاح! جاري نقلك للمتجر...";
+                statusElement.innerText = "تم التحقق بنجاح!";
                 
-                // التحويل إلى Carrd مع إضافة علامة نجاح التحقق في الرابط
-                setTimeout(() => {
-                    window.location.href = "https://mobiles-pi-store.carrd.com/?auth=success";
-                }, 1500);
+                // 2. إظهار قسم الدفع لإجراء المعاملة التجريبية
+                loadingSection.style.display = "none";
+                paymentSection.style.display = "block";
 
             } catch (err) {
                 statusElement.innerText = "يرجى فتح الموقع من داخل تطبيق Pi Browser للمتابعة.";
@@ -60,12 +86,36 @@
             }
         }
 
+        // 3. دالة إجراء المعاملة (التي ستحقق لك شرط Process a Transaction)
+        document.getElementById('pay-button').onclick = async function() {
+            try {
+                const payment = await Pi.createPayment({
+                    amount: 1.0,
+                    memo: "اختبار دفع تجريبي - متجر هواتف باي",
+                    metadata: { orderId: "test_order_101" },
+                }, {
+                    onReadyForServerApproval: (paymentId) => {
+                        console.log("بانتظار موافقة الخادم. المعرف:", paymentId);
+                        // في هذه المرحلة البسيطة، ستحتاج للموافقة يدوياً من Developer Portal أو إعداد خادم لاحقاً
+                    },
+                    onReadyForServerCompletion: (paymentId, txid) => {
+                        alert("نجحت المعاملة! رقم العملية: " + txid);
+                        // بعد النجاح، يمكنك توجيه المستخدم لمتجر Carrd
+                        window.location.href = "https://mobiles-pi-store.carrd.com/?auth=success";
+                    },
+                    onCancel: (paymentId) => { alert("تم إلغاء المعاملة."); },
+                    onError: (error, payment) => { alert("خطأ في الدفع: " + error.message); },
+                });
+            } catch (err) {
+                console.error("Payment Error:", err);
+            }
+        };
+
         function onIncompletePaymentFound(payment) {
-            // التعامل مع أي عملية دفع لم تكتمل سابقاً
             console.log("Incomplete payment found", payment);
         };
 
-        window.onload = authenticateAndRedirect;
+        window.onload = authenticateUser;
     </script>
 </body>
 </html>
