@@ -24,7 +24,7 @@
             margin: 20px auto; 
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .status-text { font-size: 1.2rem; margin-top: 20px; }
+        .status-text { font-size: 1.2rem; margin-top: 20px; padding: 0 20px; }
     </style>
 </head>
 <body>
@@ -34,32 +34,38 @@
     <p id="status" class="status-text">جاري تأمين اتصالك بشبكة باي...</p>
 
     <script>
-        // استخدام تأخير بسيط لضمان تهيئة المتصفح للمكتبة
-        setTimeout(async () => {
+        // دالة بدء المصادقة والتحويل
+        async function authenticateAndRedirect() {
             const statusElement = document.getElementById('status');
+            
             try {
-                // يمكنك تغيير sandbox إلى true إذا كنت تريد التجربة لاحقاً
-                Pi.init({ version: "2.0", sandbox: false }); 
-                
+                // 1. تهيئة المكتبة
+                await Pi.init({ version: "2.0", sandbox: false });
+
+                // 2. طلب المصادقة
                 const auth = await Pi.authenticate(['username', 'payments', 'wallet_address'], onIncompletePaymentFound);
-                console.log("Authenticated User: ", auth.user.username);
                 
+                // 3. عرض رسالة النجاح
                 statusElement.innerText = "تم التحقق بنجاح! جاري نقلك للمتجر...";
                 
-                // التحويل إلى كارد بعد النجاح
+                // 4. التحويل التلقائي إلى Carrd (النفق)
                 setTimeout(() => {
                     window.location.href = "https://mobiles-pi-store.carrd.com/?auth=success";
                 }, 1000);
 
             } catch (err) {
-                statusElement.innerText = "حدث خطأ. يرجى التأكد من الرابط أو تحديث الصفحة.";
-                console.error(err);
+                // في حال وجود خطأ أو فتح الموقع خارج Pi Browser
+                statusElement.innerText = "يرجى فتح الموقع من داخل تطبيق Pi Browser للمتابعة.";
+                console.error("Pi SDK Error:", err);
             }
-        }, 1000); // تأخير ثانية واحدة
+        }
 
         function onIncompletePaymentFound(payment) {
             console.log("Incomplete payment found", payment);
         };
+
+        // تشغيل الوظيفة فور تحميل الصفحة
+        window.onload = authenticateAndRedirect;
     </script>
 </body>
 </html>
